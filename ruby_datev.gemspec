@@ -15,6 +15,7 @@ Gem::Specification.new do |s|
   
   s.required_rubygems_version = ">= 1.3.6"
  
+  s.add_dependency 'ooor'
  
   s.files        =  Dir["**/*"] - 
                     Dir["coverage/**/*"] - 
