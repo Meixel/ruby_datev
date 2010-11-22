@@ -95,11 +95,15 @@ module Datev
     protected
 
     def self.load_file file_name
-      ff=File.new(file_name, 'r')
-      content=ff.read
-      ff.close
+      if File::exists? file_name
+        ff=File.new(file_name, 'r')
+        content=ff.read
+        ff.close
 
-      content
+        content
+      else
+        nil
+      end
 
     end
 
@@ -385,17 +389,29 @@ module Datev
     
     def initialize file_name #initialize object given an EDxxxxx file name. Loads content, removes end-of-block whitespace and parses the file
       
-      content=self.class.load_file file_name
-      blocks=self.class.make_blocks content, 256
-      merged=self.class.merge_blocks blocks
+      if content=self.class.load_file(file_name)
+        blocks=self.class.make_blocks content, 256
+        merged=self.class.merge_blocks blocks
       
-      @header = Header.parse_all blocks.first
-      @version = Version.parse_all blocks.first
-      @transactions = Transaction.parse_all merged
+        @header = Header.parse_all blocks.first
+        @version = Version.parse_all blocks.first
+        @transactions = Transaction.parse_all merged
+      else
+        raise "File #{file_name} not loaded!"
+      end
       
       
     end
     
+    def self.load file_name
+      
+      if File::exists? file_name
+        self.new file_name
+      else
+        nil
+      end
+      
+    end
       
     
   end # end of class Edxxxxx
@@ -433,7 +449,6 @@ module Datev
         values = @@header_range_extractor.map do |r|
           str[r]
         end
-        debugger
         Header[*@@header_ranges_order.zip(values).flatten]
         
       end
@@ -496,19 +511,37 @@ module Datev
      attr_accessor :header, :blocks
      
      def initialize file_name
-       content=self.class.load_file file_name
-       blocks=self.class.make_blocks content, 128
        
-       headr=blocks.first
-       rest=blocks[1..-1]
+       if content=self.class.load_file(file_name)
+         blocks=self.class.make_blocks content, 128
        
-       @header = Header.parse_all headr
+         headr=blocks.first
+         rest=blocks[1..-1]
        
-       @blocks = rest.map do |b|
-         Block.parse_all b
+         @header = Header.parse_all headr
+       
+         @blocks = rest.map do |b|
+           Block.parse_all b
+         end
+       else
+         raise "File #{filename} does not loaded!"
        end
        
+       
      end
+     
+     
+     def self.load file_name
+
+       if File::exists? file_name
+         self.new file_name
+       else
+         nil
+       end
+
+     end
+     
+    
     
     
     
@@ -520,6 +553,48 @@ module Datev
   
   
   
+  class ED
+    @@ed_template="ED%0.5d"
+    
+    attr_accessor :ev01
+    def initialize ev_file_name
+      @ev01=Ev01.new ev_file_name
+      
+      folder_name_regex = Regexp.new(/(.*)#{ev_file_name[-4..-1]}\Z/)
+      folder_name= folder_name_regex.match(ev_file_name)[1]
+      puts folder_name
+      
+      load_eds folder_name
+      
+    end
+    
+    
+    protected
+    def load_eds folder_name
+      number_of_ed_files = @ev01.header[:anzahl_datendateien].to_i
+      
+      ed_names = (1..number_of_ed_files).to_a.map do |i|
+        sprintf(@@ed_template,i)
+      end
+      
+      ed_names.each do |en|
+        
+        instance_eval "@#{en.downcase} = Edxxxxx.load '#{folder_name}/#{en}'"
+        
+        self.metaclass.send :attr_accessor, :"#{en.downcase}"
+        
+      end
+      
+      @eds= ed_names.map do |en|
+        self.send en.downcase.to_sym
+      end
+      
+      self.metaclass.send :attr_accessor, :eds
+      
+      
+    end
+    
+  end
   
 
   
