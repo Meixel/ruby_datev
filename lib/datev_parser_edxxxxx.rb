@@ -193,7 +193,130 @@ module DatevParser
     
     
     # a class header to parse the header
+    class Header < Hash
+      
+      # header is read using ranges, because the lengths of the data set are fixed
+      @@header_ranges ={
+        :datentraegernummer => 3...6,
+        :anwendungsnummer => 6...8,
+        :namenskuerzel => 8...10,
+        :beraternummer => 10...17,
+        :mandantennummer => 17...22,
+        :abrechnungsnummer => 22...28,
+        :datum_von => 28...34,
+        :datum_bis => 34...40,
+        :primanota_seite => 40...43,
+        :passwort => 43...47,
+        :anwendungsinfo => 47 ...63,
+        :input_info => 63...79}
+        
+      def self.header_ranges
+        @@header_ranges
+      end
+      def self.header_ranges= hr
+        @@header_ranges = hr
+      end
+      
+        
+      @@header_ranges_order=[
+        :datentraegernummer, 
+        :anwendungsnummer, 
+        :namenskuerzel, 
+        :beraternummer, 
+        :mandantennummer, 
+        :abrechnungsnummer, 
+        :datum_von, 
+        :datum_bis, 
+        :primanota_seite, 
+        :passwort, 
+        :anwendungsinfo, 
+        :input_info]
+        
+      def self.header_ranges_order
+        @@header_ranges_order
+      end
+      def self.header_ranges_order= hro
+        @@header_ranges_order= hro
+      end
+      
+      #this is the structure to be used to extract the information
+      def self.make_header_range_extractor
+        @@header_range_extractor= @@header_ranges_order.map do |hr|
+          @@header_ranges[hr]
+        end
+      end
+      
+      make_header_range_extractor
+      
+      #getter and setter at own risk
+      def self.header_range_extractor
+        @@header_range_extractor
+      end
+      def self.header_range_extractor= hre
+        @@header_range_extractor= hre
+      end
+      
+      # parser, can take the whole file or only the first block. only looks at first 80 bytes anyway
+      def self.parse_all str
+        values = @@header_range_extractor.map do |hr|
+          str[hr]
+        end
+        
+        Header[*@@header_ranges_order.zip(values).flatten]
+        
+      end
+      
+        
+      
+    end # end of class Header
     
+    #class Version to parse the version information
+    class Version < Hash
+      @@version_offset=80-1
+      @@version_ranges ={
+        :versionsnummer => 2..2,
+        :aufgezeichnete_sachkontonummernlaenge => 4..4,
+        :gespeicherte_sachkontonummernlaenge => 6..6,
+        :produktkuerzel => 8...12
+      }
+      
+      
+      @@version_ranges_order =[
+      :versionsnummer,
+      :aufgezeichnete_sachkontonummernlaenge,
+      :gespeicherte_sachkontonummernlaenge,
+      :produktkuerzel
+      ]
+      
+      def self.make_version_range_extractor
+        @@version_range_extractor = @@version_ranges_order.map do |vr|
+          r=@@version_ranges[vr]
+          f= r.first + @@version_offset
+          l= r.last + @@version_offset
+          
+          if r.exclude_end?
+            f...l
+          else
+            f..l
+          end
+          
+        end
+      end
+      
+      make_version_range_extractor
+      
+      #parse the first block of an EDxxxxx file
+      def self.parse_all str    
+        values = @@version_range_extractor.map do |vr|
+          str[vr]
+        end
+          
+        Version[*@@version_ranges_order.zip(values).flatten]
+      end
+        
+      
+      
+    end # end of class Version
     
     
     
@@ -235,7 +358,7 @@ module DatevParser
     
     
     
-    attr_reader :transactions
+    attr_reader :transactions, :header, :version
 
     
     def initialize file_name #initialize object given an EDxxxxx file name. Loads content, removes end-of-block whitespace and parses the file
@@ -244,6 +367,8 @@ module DatevParser
       blocks=self.class.make_blocks content, 256
       merged=self.class.merge_blocks blocks
       
+      @header = Header.parse_all blocks.first
+      @version = Version.parse_all blocks.first
       @transactions = Transaction.parse_all merged
       
       
