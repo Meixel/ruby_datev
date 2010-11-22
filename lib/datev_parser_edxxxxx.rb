@@ -51,9 +51,7 @@ end
 
 
 
-module DatevParser
-  
-  
+class DatevParser
   
   class Edxxxxx
     
@@ -321,39 +319,6 @@ module DatevParser
     
     
     
-    # chops string in to blocks of length 'length=256', as per definition of datev format EDxxxxx
-    def self.make_blocks(str ,length=@@block_length)
-      total_length= str.length
-      length = length.to_i unless length.is_a?(Integer)
-
-      num_blocks = total_length/length
-
-      ranges=(0...num_blocks).to_a.map do |a|
-        a*length
-      end.map do |a|
-        (a...a+length)
-      end
-
-      ranges.map do |r|
-        str[r]
-      end
-    end
-
-    # chops of trailing \000 characters of each block and returns merged string
-    def self.merge_blocks (str_blocks)
-      #check that every block ends in \000 x 6
-      end_zeros=str_blocks.map do |a|
-        a[-6..-1]
-      end.join
-
-      raise "Something wrong with the zero padding at the end of the blocks!" unless end_zeros.map(&:to_i).map(&:abs).foldl == 0
-
-
-      content = str_blocks.map do |a|
-        a[0...-6]
-      end.join
-
-    end
     
     
     
@@ -363,7 +328,7 @@ module DatevParser
     
     def initialize file_name #initialize object given an EDxxxxx file name. Loads content, removes end-of-block whitespace and parses the file
       
-      content=load_file file_name
+      content=self.class.load_file file_name
       blocks=self.class.make_blocks content, 256
       merged=self.class.merge_blocks blocks
       
@@ -378,19 +343,72 @@ module DatevParser
     
     
     
-    private
     
-    def load_file file_name
-      ff=File.new(file_name, 'r')
-      content=ff.read
-      ff.close
+    
+  end # end of class Edxxxxx
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  # chops string in to blocks of length 'length=256', as per definition of datev format EDxxxxx
+  def self.make_blocks(str ,length=@@block_length)
+    total_length= str.length
+    length = length.to_i unless length.is_a?(Integer)
 
-      content
-      
+    num_blocks = total_length/length
+
+    ranges=(0...num_blocks).to_a.map do |a|
+      a*length
+    end.map do |a|
+      (a...a+length)
     end
-    
+
+    ranges.map do |r|
+      str[r]
+    end
+  end
+
+  # chops of trailing \000 characters of each block and returns merged string
+  def self.merge_blocks (str_blocks)
+    #check that every block ends in \000 x 6
+    end_zeros=str_blocks.map do |a|
+      a[-6..-1]
+    end.join
+
+    raise "Something wrong with the zero padding at the end of the blocks!" unless end_zeros.map(&:to_i).map(&:abs).foldl == 0
+
+
+    content = str_blocks.map do |a|
+      a[0...-6]
+    end.join
+
+  end
+  
+  
+  
+  
+  #protected
+  
+  def self.load_file file_name
+    ff=File.new(file_name, 'r')
+    content=ff.read
+    ff.close
+
+    content
     
   end
+  
   
   
 end
