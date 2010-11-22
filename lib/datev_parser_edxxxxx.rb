@@ -401,8 +401,114 @@ module Datev
   end # end of class Edxxxxx
   
   
-  class Ev01 < Parser
+  class Ev01 < Parser #this is exactly the same as the Edxxxxx class
     
+    class Header < Hash
+      @@header_ranges = {
+        :datentraegernummer => 0...3,
+        :beraternummer => 6...13,
+        :beratername => 13...22,
+        :anzahl_datendateien => 23...28,
+        :letzte_datendateinummer => 28...33
+      }
+      
+      @@header_ranges_order =[
+        :datentraegernummer,
+        :beraternummer,
+        :beratername,
+        :anzahl_datendateien,
+        :letzte_datendateinummer
+      ]
+      
+      def self.make_header_range_extractor
+        @@header_range_extractor = @@header_ranges_order.map do |hr|
+          @@header_ranges[hr]
+        end
+        
+      end
+      make_header_range_extractor
+      
+      
+      def self.parse_all str
+        values = @@header_range_extractor.map do |r|
+          str[r]
+        end
+        debugger
+        Header[*@@header_ranges_order.zip(values).flatten]
+        
+      end
+     end
+     
+     class Block < Hash
+       @@block_ranges = {
+         :verarbeitungskennzeichen => 0..0,
+         :datei_nummer => 1...6,
+         :anwendungs_nummer => 6...8,
+         :namenskuerzel => 8...10,
+         :beraternummer => 10...17,
+         :mandantennummer => 17...22,
+         :abrechnungsnummer => 22...28,
+         :datum_von => 28+4...38,
+         :datum_bis => 38...44,
+         :primanota_seite => 44...47,
+         :passwort => 47...51,
+         :letzte_block_nummer => 51...56,
+         :letzte_primanota_seite => 56...60,
+         :versionskennung => 61...75
+       }
+       
+       @@block_ranges_order = [
+         :verarbeitungskennzeichen,
+         :datei_nummer,
+         :anwendungs_nummer,
+         :namenskuerzel,
+         :beraternummer,
+         :mandantennummer,
+         :abrechnungsnummer,
+         :datum_von,
+         :datum_bis,
+         :primanota_seite,
+         :passwort,
+         :letzte_block_nummer,
+         :letzte_primanota_seite,
+         :versionskennung
+      ]
+      
+      def self.make_block_range_extractor
+        @@block_range_extractor = @@block_ranges_order.map do |br|
+          @@block_ranges[br]
+        end
+      end
+      make_block_range_extractor
+      
+      def self.parse_all str
+        values=@@block_range_extractor.map do |r|
+          str[r]
+        end
+        
+        Block[*@@block_ranges_order.zip(values).flatten]
+      end
+      
+      
+       
+     end
+     
+     attr_accessor :header, :blocks
+     
+     def initialize file_name
+       content=self.class.load_file file_name
+       blocks=self.class.make_blocks content, 128
+       
+       headr=blocks.first
+       rest=blocks[1..-1]
+       
+       @header = Header.parse_all headr
+       
+       @blocks = rest.map do |b|
+         Block.parse_all b
+       end
+       
+     end
     
     
     
