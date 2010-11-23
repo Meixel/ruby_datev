@@ -347,6 +347,13 @@ module Datev
       :produktkuerzel
       ]
       
+      def self.version_ranges_order
+        @@version_ranges_order
+      end
+      def self.version_ranges_order= vro
+        @@version_ranges_order = vro
+      end
+      
       def self.make_version_range_extractor
         @@version_range_extractor = @@version_ranges_order.map do |vr|
           r=@@version_ranges[vr]
